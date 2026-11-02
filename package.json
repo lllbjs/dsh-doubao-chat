@@ -2,7 +2,7 @@
   "name": "dsh-doubao-chat",
   "displayName": "豆包会话浏览器 (macOS)",
   "description": "在本机已登录的豆包客户端之上浏览账号、会话列表与消息正文，并可导出 Markdown。内置 dsh-connect-doubao 0.3.1 + macOS Safe Storage 补丁（model provider / 额度卡片 / 模型清单继续可用）。",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "keywords": [
     "dsh-plugin",

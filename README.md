@@ -1,8 +1,9 @@
 # dsh-doubao-chat
 
 在本机已登录的豆包桌面端之上，浏览**账号 / 会话 / 消息**，并把任意会话导出成
-Markdown。同时完整继承上游 `dsh-connect-doubao` 的模型 provider 能力（豆包快速、
-豆包 2.1 Turbo · 专家、Seedream 生图、额度卡片、模型清单）。
+Markdown。**支持多账号**——本机登录过的每个账号都能独立浏览自己的会话。同时完整
+继承上游 `dsh-connect-doubao` 的模型 provider 能力（豆包快速、豆包 2.1 Turbo ·
+专家、Seedream 生图、额度卡片、模型清单）。
 
 只读：不发消息、不改会话、不写豆包目录。
 
@@ -18,19 +19,37 @@ Markdown。同时完整继承上游 `dsh-connect-doubao` 的模型 provider 能�
 `dsh-connect-doubao-macos` 已从 `bundles` 摘掉（上游代码作为 `lib/upstream/` 内置，
 不需要再单独装一份）。
 
-## 四个路由
+## 路由
 
 全部挂在 `/plugins/dsh-doubao-chat/*`，只接受回环来源（`Origin` 必须是
 127.0.0.1 / localhost）。宿主 Web UI 还要带自己的 Bearer token，和别的插件路由一致。
 
+**多账号：**除了 `/accounts` 之外，每个路由都接受 `?account=<profile 名>` 参数。
+省略时后端回落到默认账号（第一个有登录的 profile）。
+
 | 路由 | 说明 | 返回 |
 |---|---|---|
-| `GET /account` | 本机登录的是谁 + 会话是否还有效 | `{ok, dataDir, verified, account:{userId,name,avatarUrl}, profiles}` |
-| `GET /conversations?limit=30` | 会话列表（含条数、相对时间、最后一条摘要） | `{ok, items:[{id,title,kind,messageCount,lastMessage,...}]}` |
-| `GET /messages?id=&kind=3&limit=20&pages=2` | 会话正文 | `{ok, items:[{id,role,createTime,text,attachments}]}` |
-| `GET /export?id=&kind=3&title=` | 导出 Markdown，落 `~/doubao-exports/` | `{ok, file, bytes, messages}` |
+| `GET /accounts` | 本机登录过的**所有账号**（每个带凭据是否可用） | `{ok, dataDir, accounts:[{profile, userId, name, avatarUrl, available, reason}]}` |
+| `GET /account?account=` | 单账号身份 + 会话是否有效 | `{ok, dataDir, verified, accountName, account:{userId,name,avatarUrl}}` |
+| `GET /conversations?account=&limit=30` | 该账号的会话列表 | `{ok, accountName, items:[{id,title,kind,messageCount,lastMessage,...}]}` |
+| `GET /messages?account=&id=&kind=3` | 该账号的会话正文 | `{ok, conversationId, accountName, items:[{id,role,createTime,text,attachments}]}` |
+| `GET /export?account=&id=&kind=3&title=` | 导出 Markdown，文件名带账号名 | `{ok, file, accountName, bytes, messages}` |
 
-加 `?refresh=1` 绕过 60 秒缓存（只对 account / conversations 有效）。
+加 `?refresh=1` 绕过 60 秒缓存（对 accounts / account / conversations 有效）。
+
+## 多账号是怎么隔离的
+
+一个 `dataDir` 下有多个 Chromium profile，每个 profile 各自登录一个账号（共用同一
+把钥匙串密钥，但 Cookie 密文不同）。上游 `loadDoubaoCredentials` 遍历 profile 后
+返回**第一个**成功的，本插件的 `loadDoubaoCredentialsForProfile(profileDir)` 按
+profile 精确读各自的库、各自解密，两个账号的 `sessionid` 不一样——所以 IM 请求带
+各自的 Cookie，拉到的会话列表也各自独立。
+
+`web_id` 同样按 profile 读取（`readDeviceIdentity(dataDir, profileDir)`），避免
+把 A 账号的 `web_id` 塞进 B 账号的请求。
+
+面板的账号下拉走 `/accounts` 枚举，选中后把 `profile` 名编进后续所有请求的
+`?account=` 参数。导出的 Markdown 头部和文件名里都带账号名，归因不会错。
 
 ## 数据从哪来
 
@@ -95,8 +114,10 @@ curl -s "http://127.0.0.1:PORT/plugins/dsh-doubao-chat/conversations?limit=10" \
 
 ```bash
 node --test __tests__/collect.test.mjs   # 6 个用例：归一化 / 正文提取 / 截断 / device_id
-node scripts/smoke.mjs            # 真机打一遍：账号 → 列表 → 正文 → 导出
+node scripts/smoke.mjs            # 真机打一遍：账号 → 列表 → 正文 → 导出 → 多账号隔离
 ```
 
 `scripts/smoke.mjs` 会真的读本机豆包、真的发 IM 请求，跑之前确认豆包客户端
-已登录、钥匙串里已有 `Doubao Safe Storage`。
+已登录、钥匙串里已有 `Doubao Safe Storage`。本机登录多个账号时，末尾会额外枚举
+每个账号并校验「会话列表确实不同」——两个账号列表完全相同就说明解密没按 profile
+隔离（会串号），会以非 0 退出码失败。

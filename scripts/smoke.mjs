@@ -14,8 +14,8 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const lib = join(here, "..", "lib");
 
-const { findDoubaoUserDataDir, loadDoubaoCredentials } = await import(join(lib, "credentials.js"));
-const { fetchConversationMeta, fetchConversations, fetchMessages, readAccountIdentity } = await import(join(lib, "collect.js"));
+const { findDoubaoUserDataDir, loadDoubaoCredentials, loadDoubaoCredentialsForProfile } = await import(join(lib, "credentials.js"));
+const { fetchConversationMeta, fetchConversations, fetchMessages, listDoubaoAccounts, readAccountIdentity } = await import(join(lib, "collect.js"));
 
 function step(name) {
 	process.stdout.write(`- ${name} … `);
@@ -110,6 +110,44 @@ try {
 		recursive: true,
 		force: true
 	});
+}
+
+// 多账号：枚举本机登录过的账号，验证每个都能独立解密、独立拉会话。
+// 两个账号的会话列表应当不同（否则说明解密没按 profile 隔离，会串号）。
+const accounts = listDoubaoAccounts(dataDir);
+if (accounts.length > 1) {
+	const snapshots = [];
+	for (const account of accounts) {
+		step(`多账号[${account.profile}] ${account.name}`);
+		const own = loadDoubaoCredentialsForProfile(account.profileDir, { force: true });
+		if (!own.ok) {
+			fail(own.reason);
+			continue;
+		}
+		let list = [];
+		try {
+			list = await fetchConversations(account.profileDir, own.pairs, { limit: 10, profileDir: account.profileDir });
+		} catch (error) {
+			fail(String(error?.message ?? error));
+			continue;
+		}
+		if (list.length === 0) fail("拉不到会话");
+		else pass(`${list.length} 个`);
+		snapshots.push({ account, list });
+	}
+	// 隔离性检查：任意两个账号的会话 id 集合不应完全相同
+	for (let i = 0; i < snapshots.length; i += 1) for (let j = i + 1; j < snapshots.length; j += 1) {
+		const a = snapshots[i], b = snapshots[j];
+		const idsA = new Set(a.list.map((c) => c.id));
+		const idsB = new Set(b.list.map((c) => c.id));
+		const same = idsA.size === idsB.size && [...idsA].every((id) => idsB.has(id));
+		step(`账号隔离 ${a.account.name} vs ${b.account.name}`);
+		if (same) fail("两个账号的会话列表完全相同，解密没按 profile 隔离（会串号）");
+		else pass(`会话不同（${idsA.size} vs ${idsB.size}）`);
+	}
+} else {
+	step("多账号");
+	pass(`本机只登录了 ${accounts.length} 个账号，跳过隔离检查`);
 }
 
 process.exit(process.exitCode ?? 0);
