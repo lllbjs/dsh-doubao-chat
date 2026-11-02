@@ -1,0 +1,75 @@
+{
+  "name": "dsh-doubao-chat",
+  "displayName": "豆包会话浏览器 (macOS)",
+  "description": "在本机已登录的豆包客户端之上浏览账号、会话列表与消息正文，并可导出 Markdown。内置 dsh-connect-doubao 0.3.1 + macOS Safe Storage 补丁（model provider / 额度卡片 / 模型清单继续可用）。",
+  "version": "0.1.0",
+  "license": "MIT",
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "doubao",
+    "seed",
+    "model-provider",
+    "quota"
+  ],
+  "type": "module",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "CHANGELOG.md",
+    "scripts",
+    "__tests__"
+  ],
+  "scripts": {
+    "test": "node --test __tests__/collect.test.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "check": "npm run test"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-settings-plugins",
+        "@deepseek-ai/dsh-client-locale"
+      ],
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.1-rc.1 <5.0.0 || >=4.0.2 <5.0.0",
+    "@deepseek-ai/dsh-host-webserver": ">=0.1.7-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-llm": ">=0.1.7-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-llm-pi-ai": ">=0.1.7-rc.1 <0.3.0-0",
+    "@deepseek-ai/schemastery": ">=3.18.1-rc.1 <4.0.0 || >=3.18.2 <4.0.0",
+    "@earendil-works/pi-ai": ">=0.85.0 <0.88.0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-host-webserver": {
+      "optional": true
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lllbjs/dsh-doubao-chat.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lllbjs/dsh-doubao-chat/issues"
+  },
+  "homepage": "https://github.com/lllbjs/dsh-doubao-chat#readme"
+}

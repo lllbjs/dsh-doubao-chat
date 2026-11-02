@@ -1,0 +1,5 @@
+# 豆包会话浏览器：在本机已登录的豆包客户端之上，浏览账号 / 会话 / 消息，
+# 并导出 Markdown。同时保留上游 dsh-connect-doubao 的 model provider 能力。
+- insert:
+    - id: dsh-doubao-chat
+      name: dsh-doubao-chat

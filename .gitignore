@@ -1,0 +1,20 @@
+# Node
+node_modules/
+npm-debug.log*
+.npm/
+
+# 构建产物
+dist/
+build/
+*.tsbuildinfo
+
+# 运行时导出（export 路由的落盘目录）
+doubao-exports/
+
+# 编辑器 / 系统
+.DS_Store
+.vscode/
+.idea/
+
+# 本地调试
+*.local
